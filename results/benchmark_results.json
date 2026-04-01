@@ -1,0 +1,5 @@
+{
+  "faiss_cpu": 51.3969,
+  "cuvs_ivf_flat": 0.4485,
+  "cuvs_cagra": 0.1658
+}
