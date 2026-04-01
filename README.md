@@ -7,12 +7,12 @@
 
 ## Overview
 
-This project uses **NVIDIA DCGM (Data Center GPU Manager)** to monitor and analyze GPU behavior in real time while running vector similarity search — the core operation powering AI search, recommendation systems, and RAG (Retrieval-Augmented Generation) pipelines.
+This project uses **NVIDIA DCGM (Data Center GPU Manager)** to monitor and analyze GPU behavior in real time while running vector similarity search — the core operation powering AI search, recommendation systems, and RAG pipelines.
 
-Think of DCGM as a heart rate monitor for the GPU. While the benchmark runs, DCGM records utilization, memory bandwidth, power draw, and clock speed every 200ms. The goal is to identify *where* the hardware is the bottleneck and *why* — not just measure which algorithm is fastest.
+Think of DCGM as a heart rate monitor for the GPU. While the benchmark runs, DCGM records utilization, memory bandwidth, power draw, and clock speed every 200ms. The goal is to identify where the hardware is the bottleneck and why.
 
 Three implementations are compared on a 500,000-vector dataset:
-- **FAISS CPU** — the industry-standard CPU-based approach (baseline)
+- **FAISS CPU** — industry-standard CPU-based approach (baseline)
 - **cuVS IVF-Flat** — NVIDIA's GPU-accelerated cluster-based search
 - **cuVS CAGRA** — NVIDIA's state-of-the-art graph-based ANN algorithm
 
@@ -20,10 +20,10 @@ Three implementations are compared on a 500,000-vector dataset:
 
 ## Background: What is ANN Search?
 
-Approximate Nearest Neighbor (ANN) search answers the question: *"Given a query vector, which vectors in a large database are most similar to it?"*
+Approximate Nearest Neighbor (ANN) search answers the following question: "Given a query vector, which vectors in a large database are most similar to it?"*
 
 This is the core operation in:
-- **Vector databases** (Pinecone, Weaviate, pgvector)
+- **Vector databases** (e.g. Pinecone)
 - **RAG pipelines** — retrieving relevant context for LLMs
 - **Semantic search** — finding documents by meaning, not keywords
 - **Recommendation systems** — finding similar items or users
@@ -58,7 +58,7 @@ DCGM was configured to sample 5 GPU metrics at 200ms intervals throughout the en
 | POWER | Power draw (W) | Is the GPU approaching its thermal limit? |
 | SMCLK | SM clock frequency (MHz) | Is the GPU throttling under sustained load? |
 
-The three algorithms were run sequentially with 3-second pauses between each, creating visible phase boundaries in the DCGM trace.
+The three algorithms were run sequentially with 3-second pauses between each, creating visible boundaries in the DCGM trace.
 
 ---
 
@@ -70,7 +70,7 @@ The three algorithms were run sequentially with 3-second pauses between each, cr
 
 | Method | Search Time | Speedup vs CPU |
 |---|---|---|
-| FAISS CPU | 49.62s | 1x (baseline) |
+| FAISS CPU | 49.62s | (baseline) |
 | cuVS IVF-Flat | 0.45s | **110x** |
 | cuVS CAGRA | 0.17s | **292x** |
 
@@ -97,15 +97,15 @@ During the FAISS CPU phase (first ~65 seconds), GPU utilization is **0%**, power
 
 ### Finding 2: cuVS IVF-Flat is memory-bandwidth bound
 
-When IVF-Flat runs, memory bandwidth utilization spikes to **90%** while GPU compute utilization reaches only ~74%. This gap is the signature of a **memory-bandwidth bound** workload — the GPU's compute cores are waiting on data from HBM rather than being the limiting factor themselves. IVF-Flat scans cluster centroids sequentially in memory, creating large linear access patterns that saturate the memory bus before saturating compute. Tuning `n_probes` and `n_lists` can reduce this memory pressure at the cost of some search accuracy.
+When IVF-Flat runs, memory bandwidth utilization spikes to **90%** while GPU compute utilization reaches only ~74%. This gap is the signature of a **memory-bandwidth bound** workload; the GPU's compute cores are waiting on data from HBM rather than being the limiting factor themselves. IVF-Flat scans cluster centroids sequentially in memory, creating large linear access patterns that saturate the memory bus before saturating compute. Tuning `n_probes` and `n_lists` can reduce this memory pressure at the cost of some search accuracy.
 
 ### Finding 3: CAGRA build triggers power throttling
 
-The CAGRA index build sustains **100% GPU utilization for ~20 seconds**, pushing power to **65W** — close to the L4's 72W TDP. DCGM captured the SM clock dropping from 2040MHz to ~1650MHz during this period: a clear **power throttle event**. The GPU automatically reduces its clock speed to stay within the power envelope. The recommendation is to build CAGRA indexes offline rather than on live serving infrastructure.
+The CAGRA index build sustains **100% GPU utilization for ~20 seconds**, pushing power to **65W**,  close to the L4's 72W TDP. DCGM captured the SM clock dropping from 2040MHz to ~1650MHz during this period, a clear **power throttle event**. The GPU automatically reduces its clock speed to stay within the power envelope. The recommendation is to build CAGRA indexes offline rather than on live serving infrastructure.
 
 ### Finding 4: CAGRA search is compute-efficient and cache-friendly
 
-Unlike IVF-Flat, CAGRA's search phase shows **high GPU utilization with low memory bandwidth utilization**. CAGRA builds a proximity graph where each vector points to its nearest neighbors. During search, the algorithm hops along graph edges rather than scanning large memory regions — a cache-friendly pattern that keeps compute cores busy without saturating the memory bus. This explains CAGRA's 2.6x edge over IVF-Flat in search latency on the same hardware.
+Unlike IVF-Flat, CAGRA's search phase shows **high GPU utilization with low memory bandwidth utilization**. CAGRA builds a proximity graph where each vector points to its nearest neighbors. During search, the algorithm hops along graph edges rather than scanning large memory regions — a cache-friendly pattern that keeps compute cores busy without saturating the memory bus. This explains CAGRA's edge over IVF-Flat in search latency on the same hardware.
 
 ---
 
