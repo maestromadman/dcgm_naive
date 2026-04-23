@@ -56,24 +56,10 @@ else:
 
 N_QUERIES = len(queries)
 
-# ── Ground truth (FAISS exact inner-product search, CPU) ──────────────────────
-print(f"\nComputing brute-force ground truth (FAISS IndexFlatIP, {N_QUERIES} queries)...")
-faiss.omp_set_num_threads(os.cpu_count() or 1)
-gt_index = faiss.IndexFlatIP(DIM)
-gt_index.add(corpus)
-t0 = time.perf_counter()
-_, I_gt = gt_index.search(queries, K)
-print(f"  Done in {time.perf_counter() - t0:.2f}s")
-
-def recall_at_k(I_pred_gpu):
-    I_pred = cp.asnumpy(I_pred_gpu)
-    hits = sum(len(set(I_gt[i]) & set(I_pred[i])) for i in range(N_QUERIES))
-    return hits / (N_QUERIES * K)
-
 # ── GPU setup ─────────────────────────────────────────────────────────────────
 try:
     import cupy as cp
-    from cuvs.neighbors import cagra
+    from cuvs.neighbors import cagra, brute_force
     from cuvs.common.resources import Resources
 except ImportError as e:
     sys.exit(f"GPU libraries unavailable: {e}")
