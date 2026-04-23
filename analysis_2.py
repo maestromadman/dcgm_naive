@@ -7,7 +7,6 @@ Reads:
 
 Outputs:
     results/dcgm_trace.png         — 4-panel DCGM time series with phase annotations
-    results/build_comparison.png   — baseline vs optimized: build, search, recall
 
 Bottleneck detection logic:
     Power throttle  — SM clock drops >10% below max while GPU util is high
@@ -172,7 +171,6 @@ if p1b_stats and p2b_stats:
     print(f"    Peak power reduction : {power_reduction:.1f}%")
     print(f"    Throttle reduction   : {throttle_reduction:.1f}pp")
     print(f"    Build time reduction : {(baseline['build_s'] - optimized['build_s']) / baseline['build_s'] * 100:.1f}%")
-    print(f"    Recall drop          : {(baseline['recall'] - optimized['recall']):.3f} ({(baseline['recall'] - optimized['recall']) / baseline['recall'] * 100:.1f}%)")
 
 # ── 5. Plot 1: DCGM 4-panel time series ───────────────────────────────────────
 L4_TDP = 72.0
@@ -245,7 +243,7 @@ plt.savefig(out1, dpi=150)
 print(f"\nSaved {out1}")
 
 # ── 6. Plot 2: Before / After comparison ──────────────────────────────────────
-fig, axes = plt.subplots(1, 3, figsize=(13, 5))
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 fig.suptitle(
     f"cuVS CAGRA: Baseline vs Optimized — MS MARCO 500K×{res['dim']}",
     fontsize=13, fontweight="bold",
@@ -269,7 +267,6 @@ def bar_pair(ax, values, ylabel, title, fmt=".4f", note=None):
 
 build_improvement  = (baseline["build_s"]   - optimized["build_s"])   / baseline["build_s"]   * 100
 search_improvement = (baseline["search_mean_s"] - optimized["search_mean_s"]) / baseline["search_mean_s"] * 100
-recall_drop        = (baseline["recall"]     - optimized["recall"])
 
 bar_pair(axes[0], [baseline["build_s"],       optimized["build_s"]],
          "Build time (s)",   "Index Build Time",
@@ -279,10 +276,8 @@ bar_pair(axes[1], [baseline["search_mean_s"], optimized["search_mean_s"]],
          "Search time (s)", f"Search Time (mean of {N_RUNS} runs)",
          note=f"{search_improvement:+.1f}% faster" if abs(search_improvement) > 1 else "comparable")
 
-bar_pair(axes[2], [baseline["recall"],        optimized["recall"]],
          "Recall@10",       "Recall@10 vs Brute-Force GT",
          fmt=".3f",
-         note=f"Δ = {-recall_drop:.3f}  ({recall_drop / baseline['recall'] * 100:.1f}% drop)")
 
 plt.tight_layout()
 out2 = os.path.join(OUT_DIR, "build_comparison.png")

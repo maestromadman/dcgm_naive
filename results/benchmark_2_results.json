@@ -1,0 +1,20 @@
+{
+  "phases": {
+    "baseline_wall_start": 1776914124.8965633,
+    "baseline_wall_end": 1776914133.612153,
+    "baseline": {
+      "graph_degree": 64,
+      "build_s": 8.2356,
+      "search_mean_s": 0.0371,
+      "search_std_s": 0.0001
+    },
+    "optimized_wall_start": 1776914136.6152716,
+    "optimized_wall_end": 1776914141.1605024,
+    "optimized": {
+      "graph_degree": 32,
+      "build_s": 4.4402,
+      "search_mean_s": 0.0174,
+      "search_std_s": 0.0
+    }
+  }
+}
