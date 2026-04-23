@@ -176,7 +176,7 @@ L4_TDP = 72.0
 
 fig, axes = plt.subplots(4, 1, figsize=(15, 11), sharex=True)
 fig.suptitle(
-    f"DCGM GPU Metrics — NVIDIA L4  |  cuVS CAGRA on MS MARCO 500K×{res['dim']}\n"
+    f"DCGM GPU Metrics — NVIDIA L4  |  cuVS CAGRA on MS MARCO 500K×768\n"
     f"Phase 1: graph_degree=64 (baseline)   Phase 2: graph_degree=32 (optimized)",
     fontsize=12, fontweight="bold",
 )
@@ -244,7 +244,7 @@ print(f"\nSaved {out1}")
 # ── 6. Plot 2: Before / After comparison ──────────────────────────────────────
 fig, axes = plt.subplots(1, 2, figsize=(10, 5))
 fig.suptitle(
-    f"cuVS CAGRA: Baseline vs Optimized — MS MARCO 500K×{res['dim']}",
+    f"cuVS CAGRA: Baseline vs Optimized — MS MARCO 500K×768",
     fontsize=13, fontweight="bold",
 )
 
