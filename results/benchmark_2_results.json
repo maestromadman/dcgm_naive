@@ -1,20 +1,29 @@
 {
   "phases": {
-    "baseline_wall_start": 1776916478.5307596,
-    "baseline_wall_end": 1776916487.0122597,
+    "baseline_wall_start": 1776917136.0803595,
+    "baseline_wall_end": 1776917144.6058202,
     "baseline": {
       "graph_degree": 64,
-      "build_s": 8.1181,
-      "search_mean_s": 0.0371,
+      "build_s": 8.1639,
+      "search_mean_s": 0.037,
       "search_std_s": 0.0001
     },
-    "optimized_wall_start": 1776916490.013016,
-    "optimized_wall_end": 1776916494.5536838,
+    "optimized_wall_start": 1776917147.6082983,
+    "optimized_wall_end": 1776917152.1738312,
     "optimized": {
       "graph_degree": 32,
-      "build_s": 4.4362,
-      "search_mean_s": 0.0173,
+      "build_s": 4.4606,
+      "search_mean_s": 0.0174,
       "search_std_s": 0.0001
+    },
+    "search_tuned_wall_start": 1776917155.1762717,
+    "search_tuned_wall_end": 1776917155.2326882,
+    "search_tuned": {
+      "graph_degree": 32,
+      "itopk_size": 32,
+      "build_s": 4.4606,
+      "search_mean_s": 0.0093,
+      "search_std_s": 0.0
     }
   }
 }
