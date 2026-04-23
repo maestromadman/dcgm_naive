@@ -58,7 +58,7 @@ if not rows:
     sys.exit(f"ERROR: no valid data rows found in {DCGM_CSV}.")
 
 df = pd.DataFrame(rows)
-df["time_s"] = df.index * 0.2
+df["time_s"] = df.index * 0.1
 print(f"Loaded {len(df)} DCGM samples  ({df['time_s'].max():.1f}s total trace)")
 
 # ── 2. Load benchmark results ─────────────────────────────────────────────────
@@ -240,6 +240,52 @@ plt.tight_layout()
 out1 = os.path.join(OUT_DIR, "dcgm_trace.png")
 plt.savefig(out1, dpi=150)
 print(f"\nSaved {out1}")
+
+# ── Plot 1b: Smoothed DCGM trace (rolling average) ───────────────────────────
+W = 5   # 5-sample window = 500ms at 100ms intervals
+
+df_r = df.copy()
+for col in ["gpu_util", "mem_util", "power", "sm_clock", "fb_mem"]:
+    df_r[col] = df[col].rolling(window=W, center=True, min_periods=1).mean()
+
+fig, axes = plt.subplots(4, 1, figsize=(15, 11), sharex=True)
+fig.suptitle(
+    f"DCGM GPU Metrics — NVIDIA L4  |  cuVS CAGRA on MS MARCO 500K×768  (500ms rolling avg)\n"
+    f"Phase 1: graph_degree=64 (baseline)   Phase 2: graph_degree=32 (optimized)",
+    fontsize=12, fontweight="bold",
+)
+
+axes[0].plot(df_r["time_s"], df_r["gpu_util"],  color="steelblue",  label="GPU Compute %", linewidth=1.2)
+axes[0].plot(df_r["time_s"], df_r["mem_util"],  color="darkorange", label="Mem BW %", alpha=0.8, linewidth=1.2)
+axes[0].set_ylabel("Utilization %"); axes[0].set_ylim(0, 110)
+
+axes[1].plot(df_r["time_s"], df_r["power"], color="crimson", label="Power (W)", linewidth=1.2)
+axes[1].axhline(y=L4_TDP, color="black", linestyle="--", linewidth=1, label=f"L4 TDP ({L4_TDP}W)")
+axes[1].set_ylabel("Power (W)")
+
+axes[2].plot(df_r["time_s"], df_r["sm_clock"], color="seagreen", label="SM Clock (MHz)", linewidth=1.2)
+axes[2].axhline(y=sm_max, color="gray", linestyle=":", linewidth=0.8, label=f"Peak {sm_max:.0f} MHz")
+axes[2].set_ylabel("SM Clock (MHz)")
+
+axes[3].plot(df_r["time_s"], df_r["fb_mem"], color="purple", label="GPU Mem Used (MB)", linewidth=1.2)
+axes[3].set_ylabel("VRAM (MB)"); axes[3].set_xlabel("Time (seconds)")
+
+for ax in axes:
+    shade_phase(ax, p1_build_start,  p1_build_end,   PHASE_COLORS["p1_build"],  "P1 build")
+    shade_phase(ax, p1_search_start, p1_search_end,  PHASE_COLORS["p1_search"], "P1 search")
+    shade_phase(ax, p2_start,        p2_build_end,   PHASE_COLORS["p2_build"],  "P2 build")
+    shade_phase(ax, p2_build_end,    p2_end,         PHASE_COLORS["p2_search"], "P2 search")
+    ax.legend(loc="upper right", fontsize=9)
+
+axes[0].legend(
+    handles=axes[0].get_legend().legend_handles + legend_patches,
+    loc="upper right", fontsize=8, ncol=2,
+)
+
+plt.tight_layout()
+out1r = os.path.join(OUT_DIR, "dcgm_trace_rolled.png")
+plt.savefig(out1r, dpi=150)
+print(f"Saved {out1r}")
 
 # ── 6. Plot 2: Before / After comparison ──────────────────────────────────────
 fig, axes = plt.subplots(1, 2, figsize=(10, 5))
