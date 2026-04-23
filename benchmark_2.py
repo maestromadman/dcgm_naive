@@ -8,7 +8,7 @@ Runs two CAGRA configurations back-to-back so DCGM can capture both:
   Phase 1  baseline   graph_degree=64  (default — triggers power throttling)
   Phase 2  optimized  graph_degree=32  (reduces build-phase thermal pressure)
 
-Ground truth is computed via FAISS IndexFlatIP (exact inner-product search).
+Ground truth is computed via cuVS brute_force (exact inner-product on GPU).
 
 Run with DCGM logging active:
     dcgmi dmon -e 203,204,252,155,100 -d 200 > results/dcgm_log.csv &
@@ -21,7 +21,6 @@ import json
 import time
 
 import numpy as np
-import faiss
 
 # ── Config ────────────────────────────────────────────────────────────────────
 N_CORPUS  = 500_000
