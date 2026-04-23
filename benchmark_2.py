@@ -71,6 +71,20 @@ queries_gpu = cp.asarray(queries)
 def sync():
     cp.cuda.Stream.null.synchronize()
 
+# ── Ground truth (cuVS brute-force inner-product on GPU) ──────────────────────
+print(f"\nComputing brute-force ground truth (cuVS brute_force, {N_QUERIES} queries)...")
+t0      = time.perf_counter()
+bf_idx  = brute_force.build(corpus_gpu, metric="inner_product", resources=res)
+_, I_gt = brute_force.search(bf_idx, queries_gpu, K, resources=res)
+sync()
+I_gt    = cp.asnumpy(I_gt)
+print(f"  Done in {time.perf_counter() - t0:.2f}s")
+
+def recall_at_k(I_pred_gpu):
+    I_pred = cp.asnumpy(I_pred_gpu)
+    hits   = sum(len(set(I_gt[i]) & set(I_pred[i])) for i in range(N_QUERIES))
+    return hits / (N_QUERIES * K)
+
 def timed_search(fn):
     fn(); sync()                    # warmup
     times = []
