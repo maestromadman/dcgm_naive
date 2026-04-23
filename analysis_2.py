@@ -272,7 +272,7 @@ bar_pair(axes[0], [baseline["build_s"],       optimized["build_s"]],
          note=f"{build_improvement:+.1f}% faster")
 
 bar_pair(axes[1], [baseline["search_mean_s"], optimized["search_mean_s"]],
-         "Search time (s)", f"Search Time (mean of {N_RUNS} runs)",
+         "Search time (s)", f"Search Time (mean of 5 runs)",
          note=f"{search_improvement:+.1f}% faster" if abs(search_improvement) > 1 else "comparable")
 
 
