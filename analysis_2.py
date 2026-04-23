@@ -172,7 +172,6 @@ if p1b_stats and p2b_stats:
     print(f"    Throttle reduction   : {throttle_reduction:.1f}pp")
     print(f"    Build time reduction : {(baseline['build_s'] - optimized['build_s']) / baseline['build_s'] * 100:.1f}%")
 
-# ── 5. Plot 1: DCGM 4-panel time series ───────────────────────────────────────
 L4_TDP = 72.0
 
 fig, axes = plt.subplots(4, 1, figsize=(15, 11), sharex=True)
@@ -276,8 +275,6 @@ bar_pair(axes[1], [baseline["search_mean_s"], optimized["search_mean_s"]],
          "Search time (s)", f"Search Time (mean of {N_RUNS} runs)",
          note=f"{search_improvement:+.1f}% faster" if abs(search_improvement) > 1 else "comparable")
 
-         "Recall@10",       "Recall@10 vs Brute-Force GT",
-         fmt=".3f",
 
 plt.tight_layout()
 out2 = os.path.join(OUT_DIR, "build_comparison.png")
