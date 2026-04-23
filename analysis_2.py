@@ -68,9 +68,10 @@ if not os.path.exists(RESULTS_JSON):
 with open(RESULTS_JSON) as f:
     res = json.load(f)
 
-phases    = res["phases"]
-baseline  = phases["baseline"]
-optimized = phases["optimized"]
+phases       = res["phases"]
+baseline     = phases["baseline"]
+optimized    = phases["optimized"]
+search_tuned = phases.get("search_tuned", {})
 
 # ── 3. Align DCGM trace to benchmark phases ───────────────────────────────────
 # Strategy: find the first sample where GPU util exceeds threshold — this is
@@ -90,6 +91,8 @@ if first_active is None:
     p2_start        = None
     p2_build_end    = None
     p2_end          = None
+    p3_start        = None
+    p3_end          = None
 else:
     # Phase 1 baseline: build + search
     p1_build_start  = first_active
@@ -104,11 +107,17 @@ else:
     p2_search_end   = p2_build_end  + optimized["search_mean_s"] * (5 + 1)
     p2_end          = p2_search_end
 
+    # Phase 3: no build (reuses Phase 2 index), just search
+    p3_start        = p2_end + 3.0
+    p3_end          = p3_start + (search_tuned.get("search_mean_s", 0) * (5 + 1) if search_tuned else 0)
+
     print(f"\nPhase alignment (relative to DCGM log start):")
     print(f"  Phase 1 build    {p1_build_start:.1f}s – {p1_build_end:.1f}s")
     print(f"  Phase 1 search   {p1_search_start:.1f}s – {p1_search_end:.1f}s")
     print(f"  Phase 2 build    {p2_start:.1f}s – {p2_build_end:.1f}s")
     print(f"  Phase 2 search   {p2_build_end:.1f}s – {p2_end:.1f}s")
+    if search_tuned:
+        print(f"  Phase 3 search   {p3_start:.1f}s – {p3_end:.1f}s")
 
 # ── 4. Bottleneck detection ───────────────────────────────────────────────────
 sm_max = df["sm_clock"].max()
@@ -186,6 +195,7 @@ PHASE_COLORS = {
     "p1_search": "#f0ad4e",
     "p2_build":  "#5bc0de",
     "p2_search": "#5cb85c",
+    "p3_search": "#9b59b6",
 }
 
 def shade_phase(ax, t0, t1, color, label=None):
@@ -224,12 +234,14 @@ for ax in axes:
     shade_phase(ax, p1_search_start, p1_search_end,  PHASE_COLORS["p1_search"], "P1 search")
     shade_phase(ax, p2_start,        p2_build_end,   PHASE_COLORS["p2_build"],  "P2 build")
     shade_phase(ax, p2_build_end,    p2_end,         PHASE_COLORS["p2_search"], "P2 search")
+    shade_phase(ax, p3_start,        p3_end,         PHASE_COLORS["p3_search"], "P3 search")
 
 legend_patches = [
     mpatches.Patch(color=PHASE_COLORS["p1_build"],  alpha=0.4, label="Phase 1 — build  (gd=64)"),
     mpatches.Patch(color=PHASE_COLORS["p1_search"], alpha=0.4, label="Phase 1 — search (gd=64)"),
     mpatches.Patch(color=PHASE_COLORS["p2_build"],  alpha=0.4, label="Phase 2 — build  (gd=32)"),
     mpatches.Patch(color=PHASE_COLORS["p2_search"], alpha=0.4, label="Phase 2 — search (gd=32)"),
+    mpatches.Patch(color=PHASE_COLORS["p3_search"], alpha=0.4, label="Phase 3 — search (gd=32, itopk=32)"),
 ]
 axes[0].legend(
     handles=axes[0].get_legend().legend_handles + legend_patches,
@@ -275,6 +287,7 @@ for ax in axes:
     shade_phase(ax, p1_search_start, p1_search_end,  PHASE_COLORS["p1_search"], "P1 search")
     shade_phase(ax, p2_start,        p2_build_end,   PHASE_COLORS["p2_build"],  "P2 build")
     shade_phase(ax, p2_build_end,    p2_end,         PHASE_COLORS["p2_search"], "P2 search")
+    shade_phase(ax, p3_start,        p3_end,         PHASE_COLORS["p3_search"], "P3 search")
     ax.legend(loc="upper right", fontsize=9)
 
 axes[0].legend(
@@ -288,17 +301,18 @@ plt.savefig(out1r, dpi=150)
 print(f"Saved {out1r}")
 
 # ── 6. Plot 2: Before / After comparison ──────────────────────────────────────
-fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+n_phases = 3 if search_tuned else 2
+fig, axes = plt.subplots(1, n_phases, figsize=(5 * n_phases, 5))
 fig.suptitle(
-    f"cuVS CAGRA: Baseline vs Optimized — MS MARCO 500K×768",
+    f"cuVS CAGRA: Phase-by-Phase Optimization — MS MARCO 500K×768",
     fontsize=13, fontweight="bold",
 )
 
-labels  = ["Baseline\n(graph_degree=64)", "Optimized\n(graph_degree=32)"]
-colors  = ["#d9534f", "#5cb85c"]
+labels = ["Phase 1\n(gd=64)", "Phase 2\n(gd=32)", "Phase 3\n(gd=32,itopk=32)"]
+colors = ["#d9534f", "#5bc0de", "#9b59b6"]
 
-def bar_pair(ax, values, ylabel, title, fmt=".4f", note=None):
-    bars = ax.bar(labels, values, color=colors, edgecolor="black", linewidth=0.6, width=0.5)
+def bar_chart(ax, values, lbls, clrs, ylabel, title, fmt=".4f", note=None):
+    bars = ax.bar(lbls, values, color=clrs, edgecolor="black", linewidth=0.6, width=0.5)
     ax.set_title(title, fontsize=11)
     ax.set_ylabel(ylabel)
     for bar, val in zip(bars, values):
@@ -310,16 +324,35 @@ def bar_pair(ax, values, ylabel, title, fmt=".4f", note=None):
                 ha="center", va="top", fontsize=9,
                 bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.8))
 
-build_improvement  = (baseline["build_s"]   - optimized["build_s"])   / baseline["build_s"]   * 100
+build_improvement  = (baseline["build_s"] - optimized["build_s"]) / baseline["build_s"] * 100
 search_improvement = (baseline["search_mean_s"] - optimized["search_mean_s"]) / baseline["search_mean_s"] * 100
 
-bar_pair(axes[0], [baseline["build_s"],       optimized["build_s"]],
-         "Build time (s)",   "Index Build Time",
-         note=f"{build_improvement:+.1f}% faster")
+bar_chart(axes[0],
+          [baseline["build_s"], optimized["build_s"]],
+          labels[:2], colors[:2],
+          "Build time (s)", "Index Build Time",
+          note=f"P1→P2: {build_improvement:+.1f}%")
 
-bar_pair(axes[1], [baseline["search_mean_s"], optimized["search_mean_s"]],
-         "Search time (s)", f"Search Time (mean of 5 runs)",
-         note=f"{search_improvement:+.1f}% faster" if abs(search_improvement) > 1 else "comparable")
+search_vals = [baseline["search_mean_s"], optimized["search_mean_s"]]
+search_note = f"P1→P2: {search_improvement:+.1f}%"
+if search_tuned:
+    p3_improvement = (baseline["search_mean_s"] - search_tuned["search_mean_s"]) / baseline["search_mean_s"] * 100
+    search_vals.append(search_tuned["search_mean_s"])
+    search_note += f"   P1→P3: {p3_improvement:+.1f}%"
+
+bar_chart(axes[1],
+          search_vals, labels[:len(search_vals)], colors[:len(search_vals)],
+          "Search time (s)", "Search Time (mean of 5 runs)",
+          note=search_note)
+
+if search_tuned and n_phases == 3:
+    s1, s2, s3 = baseline["search_mean_s"], optimized["search_mean_s"], search_tuned["search_mean_s"]
+    speedups = [1.0, s1/s2, s1/s3]
+    bar_chart(axes[2],
+              speedups, labels, colors,
+              "Speedup vs Phase 1", "Search Speedup vs Phase 1",
+              fmt=".1f",
+              note=f"Phase 3 is {s1/s3:.1f}x faster than Phase 1")
 
 
 plt.tight_layout()

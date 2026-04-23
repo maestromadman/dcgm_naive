@@ -69,10 +69,33 @@ print(f"  Search: {mean2:.4f}s ± {std2:.4f}s")
 results["phases"]["optimized_wall_end"] = time.time()
 results["phases"]["optimized"] = {"graph_degree": 32, "build_s": round(build2,4), "search_mean_s": round(mean2,4), "search_std_s": round(std2,4)}
 
+time.sleep(3)
+
+# ── Phase 3: CAGRA search-tuned (graph_degree=32, itopk_size=32) ─────────────
+print("\n" + "="*60)
+print("Phase 3: CAGRA search-tuned  (graph_degree=32, itopk_size=32)")
+print("         Hypothesis: smaller candidate list → fewer GPU ops per query")
+print("="*60)
+results["phases"]["search_tuned_wall_start"] = time.time()
+
+# Reuse the idx2 index built in Phase 2 — same graph, different search params
+sp3         = cagra.SearchParams(itopk_size=32)
+mean3, std3 = timed_search(lambda: cagra.search(sp3, idx2, queries_gpu, K, resources=res))
+print(f"  Search: {mean3:.4f}s ± {std3:.4f}s  (no rebuild needed — reuses Phase 2 index)")
+
+results["phases"]["search_tuned_wall_end"] = time.time()
+results["phases"]["search_tuned"] = {
+    "graph_degree": 32, "itopk_size": 32,
+    "build_s": round(build2, 4),       # same index as Phase 2
+    "search_mean_s": round(mean3, 4), "search_std_s": round(std3, 4),
+}
+
 with open(os.path.join(OUT_DIR, "benchmark_2_results.json"), "w") as f:
     json.dump(results, f, indent=2)
 
-print(f"\n  {'':20s} {'baseline':>10} {'optimized':>10} {'delta':>10}")
-print(f"  {'build (s)':20s} {build1:>10.4f} {build2:>10.4f} {(build2-build1)/build1*100:>+9.1f}%")
-print(f"  {'search mean (s)':20s} {mean1:>10.4f} {mean2:>10.4f} {(mean2-mean1)/mean1*100:>+9.1f}%")
+print(f"\n  {'':25s} {'gd=64':>10} {'gd=32':>10} {'gd=32,itopk=32':>15}")
+print(f"  {'-'*62}")
+print(f"  {'build (s)':25s} {build1:>10.4f} {build2:>10.4f} {'(reused)':>15}")
+print(f"  {'search mean (s)':25s} {mean1:>10.4f} {mean2:>10.4f} {mean3:>15.4f}")
+print(f"  {'search speedup vs P1':25s} {'—':>10} {mean1/mean2:>9.1f}x {mean1/mean3:>14.1f}x")
 print("\nDone. Run  python analysis_2.py  to generate DCGM plots.")
