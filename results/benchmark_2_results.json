@@ -1,29 +1,29 @@
 {
   "phases": {
-    "baseline_wall_start": 1776917136.0803595,
-    "baseline_wall_end": 1776917144.6058202,
+    "baseline_wall_start": 1776918680.1019833,
+    "baseline_wall_end": 1776918688.6599298,
     "baseline": {
       "graph_degree": 64,
-      "build_s": 8.1639,
+      "build_s": 8.1951,
       "search_mean_s": 0.037,
       "search_std_s": 0.0001
     },
-    "optimized_wall_start": 1776917147.6082983,
-    "optimized_wall_end": 1776917152.1738312,
+    "optimized_wall_start": 1776918691.6630404,
+    "optimized_wall_end": 1776918696.1904128,
     "optimized": {
       "graph_degree": 32,
-      "build_s": 4.4606,
-      "search_mean_s": 0.0174,
-      "search_std_s": 0.0001
-    },
-    "search_tuned_wall_start": 1776917155.1762717,
-    "search_tuned_wall_end": 1776917155.2326882,
-    "search_tuned": {
-      "graph_degree": 32,
-      "itopk_size": 32,
-      "build_s": 4.4606,
-      "search_mean_s": 0.0093,
+      "build_s": 4.4228,
+      "search_mean_s": 0.0173,
       "search_std_s": 0.0
+    },
+    "aggressive_wall_start": 1776918699.1929178,
+    "aggressive_wall_end": 1776918702.6974125,
+    "aggressive": {
+      "graph_degree": 16,
+      "intermediate_graph_degree": 32,
+      "build_s": 3.4538,
+      "search_mean_s": 0.0083,
+      "search_std_s": 0.0001
     }
   }
 }
